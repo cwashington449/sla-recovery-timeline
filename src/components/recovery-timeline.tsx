@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { StopDialog } from "@/components/stop-dialog";
 import { ToneBadge, fmtDelta } from "@/components/tone";
+import { TRIAGE_SECTION_ID, TriageExamples } from "@/components/triage-examples";
 import { TrajectoryChart } from "@/components/trajectory-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -236,7 +237,7 @@ export function RecoveryTimeline() {
           <Lever
             title="Flow: less work coming in"
             points={[
-              "Intake triage + Northbeam containment: opens 95 → ~75–82/wk",
+              "Intake triage: batch Northbeam migration defects and merge duplicates. Opens 95 → ~75–82/wk",
               "Close-QA on every Kevin/Tasha close: reopens 13 → ~6/wk",
               "Result: resolves beat demand every week from Oct 5",
             ]}
@@ -259,6 +260,8 @@ export function RecoveryTimeline() {
           />
         </div>
       </section>
+
+      <TriageExamples />
 
       <section className="mt-10 grid gap-3 lg:grid-cols-[1.4fr_1fr]">
         <Card size="sm">
@@ -324,7 +327,16 @@ export function RecoveryTimeline() {
         Tip: ← / → step through the stops. The URL updates as you move, so you can share a link to any stop.
       </p>
 
-      <StopDialog open={open} onOpenChange={setOpen} stopIndex={stop} onNavigate={(i) => goTo(i, true)} />
+      <StopDialog
+        open={open}
+        onOpenChange={setOpen}
+        stopIndex={stop}
+        onNavigate={(i) => goTo(i, true)}
+        onShowTriage={() => {
+          setOpen(false);
+          setTimeout(() => document.getElementById(TRIAGE_SECTION_ID)?.scrollIntoView({ behavior: "smooth" }), 200);
+        }}
+      />
     </main>
   );
 }

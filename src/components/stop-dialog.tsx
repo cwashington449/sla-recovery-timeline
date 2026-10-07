@@ -7,6 +7,7 @@ import {
   Briefcase,
   CheckCircle2,
   CircleDollarSign,
+  Filter,
   Flag,
   Hourglass,
   ListOrdered,
@@ -34,9 +35,10 @@ interface StopDialogProps {
   onOpenChange: (open: boolean) => void;
   stopIndex: number;
   onNavigate: (index: number) => void;
+  onShowTriage: () => void;
 }
 
-export function StopDialog({ open, onOpenChange, stopIndex, onNavigate }: StopDialogProps) {
+export function StopDialog({ open, onOpenChange, stopIndex, onNavigate, onShowTriage }: StopDialogProps) {
   const stop = STOPS[stopIndex];
   const m = metricsFor(stop);
   const prev = stopIndex > 0 ? metricsFor(STOPS[stopIndex - 1]) : null;
@@ -138,6 +140,15 @@ export function StopDialog({ open, onOpenChange, stopIndex, onNavigate }: StopDi
           <div className="grid gap-4 lg:grid-cols-2">
             <Section icon={<Flag className="size-4" />} title="Priorities this period">
               <Bullets items={stop.focus} />
+              {stop.mentionsTriage && (
+                <button
+                  type="button"
+                  onClick={onShowTriage}
+                  className="mt-3 flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  <Filter className="size-3.5" /> See intake triage examples from the queue
+                </button>
+              )}
             </Section>
             <Section icon={<Hourglass className="size-4" />} title="What waits">
               <Bullets items={stop.waits} muted />

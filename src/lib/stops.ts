@@ -39,6 +39,7 @@ export interface Stop {
   leadershipAsks: string[];
   watch: string[];
   successChecks: string[];
+  mentionsTriage?: boolean;
 }
 
 export const HIRING_STAGES = ["Reqs posted", "Interviewing", "Offers accepted", "Started & ramping"] as const;
@@ -47,6 +48,7 @@ export const STOPS: Stop[] = [
   {
     id: 0,
     label: "Today",
+    mentionsTriage: true,
     marker: "Plan kicks off",
     period: "Week of Oct 5 — starting point",
     title: "Backlog has doubled; we act this week",
@@ -105,6 +107,7 @@ export const STOPS: Stop[] = [
   {
     id: 1,
     label: "Oct 16",
+    mentionsTriage: true,
     marker: "Queue shrinking",
     period: "Oct 5 – Oct 16",
     title: "Queue stops growing",
@@ -195,6 +198,7 @@ export const STOPS: Stop[] = [
   {
     id: 3,
     label: "Nov 13",
+    mentionsTriage: true,
     marker: "Hires start · Tasha exits",
     period: "Nov 2 – Nov 13",
     title: "Through the exit trough",
@@ -285,6 +289,7 @@ export const STOPS: Stop[] = [
   {
     id: 5,
     label: "Dec 11",
+    mentionsTriage: true,
     marker: "Hires at 55%",
     period: "Nov 30 – Dec 11",
     title: "Hires at 55%; SLA nears 90%",
