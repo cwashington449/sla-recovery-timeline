@@ -1,27 +1,15 @@
 "use client";
 
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Gauge,
-  Inbox,
-  Link2,
-  Maximize2,
-  ShieldCheck,
-  Users,
-  Workflow,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Gauge, Inbox, Link2, Maximize2 } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { StopDialog } from "@/components/stop-dialog";
-import { ToneBadge, fmtDelta } from "@/components/tone";
-import { TRIAGE_SECTION_ID, TriageExamples } from "@/components/triage-examples";
+import { ToneBadge } from "@/components/tone";
 import { TrajectoryChart } from "@/components/trajectory-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
-import { STOPS, metricsFor, slipOutcome } from "@/lib/stops";
+import { PLAN_STEPS, STOPS, metricsFor, slipOutcome } from "@/lib/stops";
 import { cn } from "@/lib/utils";
 
 const LAST = STOPS.length - 1;
@@ -76,11 +64,10 @@ export function RecoveryTimeline() {
 
   const current = STOPS[stop];
   const m = metricsFor(current);
-  const start = metricsFor(STOPS[0]);
-  const specialists = current.roster.tenured + current.roster.onPip.length + current.roster.newHires;
+  const active = new Set(current.activeSteps);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-2xl">
           <p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">
@@ -90,9 +77,8 @@ export function RecoveryTimeline() {
             Back to 90%+ SLA by year-end
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Twelve weeks, three levers, and a team that gets smaller before it grows. Use the slider to step through the
-            plan two weeks at a time. Each stop shows who is working on what, where hiring stands, and what we need from
-            leadership.
+            Four steps, twelve weeks. Slide through the plan two weeks at a time — each stop opens the detail on what
+            changes, why, and what we need from leadership.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={copyLink} className="self-start sm:self-auto">
@@ -101,44 +87,51 @@ export function RecoveryTimeline() {
         </Button>
       </header>
 
-      <section className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="mt-8" aria-label="The plan in four steps">
+        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">The plan in four steps</h2>
+        <ol className="mt-3 grid gap-2 sm:grid-cols-2">
+          {PLAN_STEPS.map((step) => {
+            const isActive = active.has(step.id);
+            return (
+              <li
+                key={step.id}
+                className={cn(
+                  "rounded-xl border px-4 py-3 transition-colors",
+                  isActive ? "border-primary/40 bg-primary/5" : "border-border/60 bg-muted/30 opacity-60",
+                )}
+              >
+                <div className="flex items-baseline gap-2">
+                  <span
+                    className={cn(
+                      "font-mono text-xs font-semibold tabular-nums",
+                      isActive ? "text-primary" : "text-muted-foreground",
+                    )}
+                  >
+                    {step.id}
+                  </span>
+                  <h3 className={cn("text-sm font-semibold", !isActive && "text-muted-foreground")}>{step.title}</h3>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.blurb}</p>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
+      <section className="mt-6 grid grid-cols-2 gap-3">
         <StatCard
           icon={<Inbox className="size-4" />}
           label="Open backlog"
           value={Math.round(m.backlog).toString()}
-          foot={stop === 0 ? "Healthy level ≈ 100 (July)" : fmtDelta(m.backlog - start.backlog, "since today")}
+          foot={stop === 0 ? "Healthy level about 100 (July)" : "Healthy band 90–110"}
           tone={m.backlog <= 110 ? "good" : stop === 0 ? "bad" : "neutral"}
         />
         <StatCard
           icon={<Gauge className="size-4" />}
-          label={m.slaIsActual ? "Resolved within SLA" : "SLA (backlog proxy)"}
+          label={m.slaIsActual ? "SLA" : "SLA (estimated from backlog)"}
           value={`${Math.round(m.sla)}%`}
-          foot={m.sla >= 90 ? "Target met" : `Target 90% · ${Math.round(90 - m.sla)} pts to go`}
+          foot={m.sla >= 90 ? "Target met" : `Target 90% · ${Math.round(90 - m.sla)} points to go`}
           tone={m.sla >= 90 ? "good" : stop === 0 ? "bad" : "neutral"}
-        />
-        <StatCard
-          icon={<Workflow className="size-4" />}
-          label="Resolves vs demand / wk"
-          value={`${m.capacity.toFixed(0)} vs ${m.demand.toFixed(0)}`}
-          foot={
-            m.netPerWeek > 0
-              ? `Backlog growing +${m.netPerWeek.toFixed(0)}/wk`
-              : `Backlog shrinking ${Math.abs(m.netPerWeek).toFixed(0)}/wk`
-          }
-          tone={m.netPerWeek <= 0 ? "good" : "bad"}
-        />
-        <StatCard
-          icon={<Users className="size-4" />}
-          label="Specialists + Brian"
-          value={`${specialists} + 1`}
-          foot={
-            current.roster.newHires > 0
-              ? `${current.roster.newHires} new hires at ${m.hireRampPct}%`
-              : current.roster.onPip.length > 0
-                ? `${current.roster.onPip.length} on PIP · reqs ${stop === 0 ? "posting" : "open"}`
-                : "—"
-          }
-          tone="neutral"
         />
       </section>
 
@@ -154,13 +147,25 @@ export function RecoveryTimeline() {
             </CardDescription>
           </div>
           <div className="flex shrink-0 gap-2">
-            <Button variant="outline" size="icon" disabled={stop === 0} onClick={() => goTo(stop - 1, true)} aria-label="Previous stop">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={stop === 0}
+              onClick={() => goTo(stop - 1, true)}
+              aria-label="Previous stop"
+            >
               <ArrowLeft />
             </Button>
             <Button onClick={() => setOpen(true)}>
               <Maximize2 /> Stop details
             </Button>
-            <Button variant="outline" size="icon" disabled={stop === LAST} onClick={() => goTo(stop + 1, true)} aria-label="Next stop">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={stop === LAST}
+              onClick={() => goTo(stop + 1, true)}
+              aria-label="Next stop"
+            >
               <ArrowRight />
             </Button>
           </div>
@@ -185,7 +190,8 @@ export function RecoveryTimeline() {
           <ol className="relative mt-3 hidden h-14 sm:block">
             {STOPS.map((s, i) => {
               const pct = (i / LAST) * 100;
-              const align = i === 0 ? "translate-x-0 text-left" : i === LAST ? "-translate-x-full text-right" : "-translate-x-1/2 text-center";
+              const align =
+                i === 0 ? "translate-x-0 text-left" : i === LAST ? "-translate-x-full text-right" : "-translate-x-1/2 text-center";
               return (
                 <li key={s.id} className={cn("absolute top-0 w-28", align)} style={{ left: `${pct}%` }}>
                   <button
@@ -213,9 +219,10 @@ export function RecoveryTimeline() {
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Backlog and SLA, week by week</CardTitle>
+          <CardTitle>Open backlog and SLA, week by week</CardTitle>
           <CardDescription>
-            Solid = where we are on the slider; dashed = the rest of the plan. Shaded band = healthy backlog (90–110).
+            Solid lines are where we are on the slider; dashed lines are the rest of the plan. Shaded band is the healthy
+            backlog (90–110).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -227,116 +234,25 @@ export function RecoveryTimeline() {
         </CardContent>
       </Card>
 
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold tracking-tight">Why the plan works</h2>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Hiring alone can&apos;t close the gap: even with Brian, today&apos;s demand (95 opens + 13 reopens) is ~10/wk more than
-          we can resolve. So all three levers run at the same time, starting this week.
+      <footer className="mt-10 space-y-2 border-t pt-6 text-center text-xs leading-relaxed text-muted-foreground">
+        <p>
+          If we do not cut incoming work, 90% slips to about March — even with the same two hires. One-week hire delay
+          still finishes the year around {Math.round(slipOutcome.sla)}% SLA ({Math.round(slipOutcome.backlog)} backlog).
         </p>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <Lever
-            title="Flow: less work coming in"
-            points={[
-              "Intake triage: batch Northbeam migration defects and merge duplicates. Opens 95 → ~75–82/wk",
-              "Close-QA on every Kevin/Tasha close: reopens 13 → ~6/wk",
-              "Result: resolves beat demand every week from Oct 5",
-            ]}
-          />
-          <Lever
-            title="Mix: close the right tickets"
-            points={[
-              "Fee-tied at-risk first, then fee-tied breaches within the late budget",
-              "Partner-wait chased daily, because the SLA clock keeps running",
-              "Deep non-fee on-track work waits when we're oversubscribed",
-            ]}
-          />
-          <Lever
-            title="People: cover the exit trough"
-            points={[
-              "Plan Kevin (Oct 30) and Tasha (Nov 13) as exits",
-              "2 backfills posted now → start Nov 2 → 55% by Dec",
-              "Brian +5/wk and a +4/wk stretch through December",
-            ]}
-          />
-        </div>
-      </section>
+        <p>
+          Tip: ← / → step through the stops. The URL updates as you move, so you can share a link to any stop.{" "}
+          <a
+            href={DATA_PACK_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Source: Backlog Recovery Plan — Data Pack ↗
+          </a>
+        </p>
+      </footer>
 
-      <TriageExamples />
-
-      <section className="mt-10 grid gap-3 lg:grid-cols-[1.4fr_1fr]">
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <ShieldCheck className="size-4 text-primary" /> How to read the numbers
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-xs leading-relaxed text-muted-foreground">
-            <p>
-              <span className="font-medium text-foreground">Facts</span> come from the data pack (Summary, Queue
-              Snapshot, History). Today: backlog 200, SLA 71%, 93 resolves/wk (20 from Kevin + Tasha), Brian +5 available,
-              hires take 4–6 weeks to recruit and ~3 months to ramp.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">Projections</span> use weekly flow: backlog change = opens +
-              reopens − resolves. SLA is a backlog proxy from the History trend (100 backlog ≈ 93%, 200 ≈ 71%). The proxy
-              doesn&apos;t predict exact monthly prints.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">Assumptions beyond the sheet:</span> hires start Nov 2 (4-week
-              recruit), ramp at 30% / 55% / 80% / 100% in four-week steps, +4/wk overtime or borrowed help from Nov 2 to
-              Dec 25, and the intake and reopen targets above. Holiday dips aren&apos;t modeled.
-            </p>
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle className="text-sm">If something slips</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
-              <li>
-                <span className="font-medium text-foreground">Hires start a week late:</span> still ~{Math.round(slipOutcome.sla)}% SLA by
-                year-end (~{Math.round(slipOutcome.backlog)} backlog).
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Only 1 backfill:</span> doesn&apos;t replace 20 tickets/wk;
-                recovery stalls.
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Reopens stay ≥12:</span> like losing a specialist; adds 4–8
-                weeks.
-              </li>
-              <li>
-                <span className="font-medium text-foreground">No intake triage:</span> backlog grows through November; 90%
-                slides to ~March.
-              </li>
-            </ul>
-            <a
-              href={DATA_PACK_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-block text-xs font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Source: Backlog Recovery Plan — Data Pack ↗
-            </a>
-          </CardContent>
-        </Card>
-      </section>
-
-      <p className="mt-8 text-center text-[11px] text-muted-foreground">
-        Tip: ← / → step through the stops. The URL updates as you move, so you can share a link to any stop.
-      </p>
-
-      <StopDialog
-        open={open}
-        onOpenChange={setOpen}
-        stopIndex={stop}
-        onNavigate={(i) => goTo(i, true)}
-        onShowTriage={() => {
-          setOpen(false);
-          setTimeout(() => document.getElementById(TRIAGE_SECTION_ID)?.scrollIntoView({ behavior: "smooth" }), 200);
-        }}
-      />
+      <StopDialog open={open} onOpenChange={setOpen} stopIndex={stop} onNavigate={(i) => goTo(i, true)} />
     </main>
   );
 }
@@ -370,22 +286,6 @@ function StatCard({
         {value}
       </div>
       <div className="mt-0.5 text-xs text-muted-foreground">{foot}</div>
-    </div>
-  );
-}
-
-function Lever({ title, points }: { title: string; points: string[] }) {
-  return (
-    <div className="rounded-xl border bg-card p-4">
-      <h3 className="text-sm font-semibold">{title}</h3>
-      <ul className="mt-2 space-y-1.5">
-        {points.map((p) => (
-          <li key={p} className="flex gap-2 text-sm leading-snug text-muted-foreground">
-            <Check className="mt-0.5 size-3.5 shrink-0 text-primary" />
-            {p}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

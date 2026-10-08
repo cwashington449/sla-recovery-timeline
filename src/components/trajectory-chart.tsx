@@ -120,7 +120,7 @@ export function TrajectoryChart({ stopIndex }: { stopIndex: number }) {
                   <span className="font-mono tabular-nums">{Math.round(p.backlog)}</span>
                 </div>
                 <div className="flex justify-between gap-6">
-                  <span className="text-muted-foreground">{p.idx === 0 ? "SLA" : "SLA (proxy)"}</span>
+                  <span className="text-muted-foreground">{p.idx === 0 ? "SLA" : "SLA (estimated)"}</span>
                   <span className="font-mono tabular-nums">{Math.round(p.sla)}%</span>
                 </div>
               </div>
